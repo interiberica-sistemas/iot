@@ -2,67 +2,41 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard IoT</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
-  <style>
-    body {
-      background-color: #f4f6f9;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .sidebar {
-      height: 100vh;
-      background: #343a40;
-      color: white;
-    }
-    .sidebar h4 {
-      padding: 1rem;
-      border-bottom: 1px solid #495057;
-    }
-    .sidebar a {
-      color: white;
-      padding: 0.75rem 1rem;
-      display: block;
-      text-decoration: none;
-    }
-    .sidebar a:hover {
-      background: #495057;
-    }
-    .connected { color: green; font-weight: bold; }
-    .disconnected { color: red; font-weight: bold; }
-  </style>
+  <link rel="stylesheet" href="/styles.css">
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js')
-        .then(reg => console.log("Service Worker registrado ✅"))
-        .catch(err => console.error("Error SW ❌", err));
+        .then(() => console.log('Service Worker registrado ✅'))
+        .catch(err => console.error('Error SW ❌', err));
     }
   </script>
 </head>
 <body>
-
 <div class="d-flex">
-  <div class="sidebar p-3">
-   <div class="text-center mb-4">
-  <a href="/">
-    <img src="Img/logo.jpeg" alt="Logo" style="max-width: 100px; height: auto;">
-  </a>
-</div>
-<a href="#">🔧 Panel Principal</a>
-
+  <aside class="sidebar p-3">
+    <div class="text-center mb-4">
+      <a href="/">
+        <img src="Img/logo.jpeg" alt="Logo" style="max-width: 100px; height: auto;">
+      </a>
+    </div>
+    <a href="#">🔧 Panel Principal</a>
     <a href="#">📡 Dispositivos</a>
     <a href="#">⚙️ Configuración</a>
-  </div>
+  </aside>
 
-  <div class="flex-grow-1 p-4">
-    <h2 class="mb-4">Estado de dispositivos IIWSS</h2>
+  <main class="flex-grow-1 p-4">
+    <h1 class="mb-4 fs-3">Estado de dispositivos IIWSS</h1>
 
-    <div class="row mb-4">
+    <div class="row mb-4 g-4">
       <div class="col-md-4">
-        <div class="card shadow-sm border-start border-4 border-primary">
+        <div class="card glass-card h-100">
           <div class="card-body">
-            <h5 class="card-title">Agregar nuevo dispositivo</h5>
+            <h2 class="card-title h5">Agregar nuevo dispositivo</h2>
             <div class="mb-2">
               <input type="text" id="newDeviceId" class="form-control" placeholder="S/N del dispositivo">
             </div>
@@ -73,30 +47,38 @@
               <input type="text" id="newCompany" class="form-control" placeholder="Empresa">
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-success" onclick="addDevice()">Agregar</button>
-              <!-- <button class="btn btn-outline-secondary" onclick="exportEntries()">Exportar .txt</button> -->
+              <button class="btn neon-btn" onclick="addDevice()">Agregar</button>
             </div>
           </div>
         </div>
       </div>
       <div class="col-md-8">
-        <div id="summary" class="alert alert-info">Cargando resumen...</div>
+        <section id="summary" class="summary-box" aria-live="polite">
+          <div class="summary-stats">
+            <div class="summary-item">✅ Conectados: <span id="connectedCount">0</span></div>
+            <div class="summary-item">❌ Desconectados: <span id="disconnectedCount">0</span></div>
+          </div>
+          <div id="statusLoader" class="d-flex align-items-center gap-2 small-muted" hidden>
+            <div class="loader" aria-hidden="true"></div>
+            Consultando estado...
+          </div>
+        </section>
       </div>
     </div>
 
     <div class="row" id="deviceCards"></div>
-  </div>
+  </main>
 </div>
 
 <script>
-
   let devices = [
-    { id: "P3240005S3P", city: "Monterrey", company: "Bimbo" },
-    { id: "P3240279C94", city: "Queretaro", company: "Coca-cola" },
-    { id: "P3240367R8P", city: "Sinaloa", company: "Pepsi" },
-    { id: "P3240160I1M", city: "León", company: "Interiberica" }
-
+    { id: 'P3240005S3P', city: 'Monterrey', company: 'Bimbo' },
+    { id: 'P3240279C94', city: 'Queretaro', company: 'Coca-cola' },
+    { id: 'P3240367R8P', city: 'Sinaloa', company: 'Pepsi' },
+    { id: 'P3240160I1M', city: 'León', company: 'Interiberica' }
   ];
+
+  const previousStates = new Map();
 
   if ('Notification' in window && Notification.permission !== 'granted') {
     Notification.requestPermission();
@@ -119,92 +101,9 @@
         body: JSON.stringify({ deviceId })
       });
       return await res.json();
-    } catch (err) {
+    } catch {
       return { DeviceId: deviceId, IsConnected: false, Timestamp: Date.now().toString() };
     }
-  };
-
-  const updateTable = async () => {
-    const cardContainer = document.getElementById("deviceCards");
-    cardContainer.innerHTML = "";
-
-    let connectedCount = 0;
-    let disconnectedCount = 0;
-
-    for (const dev of devices) {
-      const id = dev.id;
-      const data = await loadStatus(id);
-      const count = await loadCommandCount(id);
-
-      const statusClass = data.IsConnected ? 'text-success' : 'text-danger';
-      const statusText = data.IsConnected ? 'Conectado ✅' : 'No conectado ❌';
-      let timestamp;
-      try { timestamp = new Date(Number(data.Timestamp)).toLocaleString(); }
-      catch { timestamp = new Date().toLocaleString(); }
-
-      if (data.IsConnected) connectedCount++;
-      else {
-        disconnectedCount++;
-        notifyDisconnect(data.DeviceId || id);
-      }
-
-      cardContainer.innerHTML += `
-        <div class="col-12 col-sm-12 col-md-6 col-lg-4 mb-4">
-          <div class="card shadow-sm border-start border-4 ${data.IsConnected ? 'border-success' : 'border-danger'}">
-            <div class="card-body">
-              <h5 class="card-title">${id}</h5>
-              <p class="card-text"><small class="text-muted">${dev.city} — ${dev.company}</small></p>
-              <p class="card-text ${statusClass}"><strong>${statusText}</strong></p>
-              <p class="card-text"><small class="text-muted">Actualizado: ${timestamp}</small></p>
-              <p class="card-text">🚿 Lavados hoy: <strong>${count}</strong></p>
-              <button class="btn btn-outline-primary btn-sm" onclick="refreshDevice('${id}')">🔄 Actualizar</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    document.getElementById("summary").innerHTML = `
-      ✅ Conectados: ${connectedCount} | ❌ Desconectados: ${disconnectedCount}
-    `;
-  };
-
-  const refreshDevice = async (deviceId) => {
-    await updateTable();
-  };
-
-  const addDevice = async () => {
-    const newId = document.getElementById("newDeviceId").value.trim();
-    const newCity = document.getElementById("newCity").value.trim();
-    const newCompany = document.getElementById("newCompany").value.trim();
-
-    if (!newId) {
-      alert('El ID del dispositivo es obligatorio.');
-      return;
-    }
-    if (devices.find(d => d.id === newId)) {
-      alert('El dispositivo ya existe en el dashboard.');
-      return;
-    }
-
-    const entry = { id: newId, city: newCity || '', company: newCompany || '', timestamp: Date.now() };
-
-   
-    try {
-      await fetch('/api/save-entry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-      });
-    } catch (err) {
-      console.error('Error guardando entrada:', err);
-    }
-
-    devices.push({ id: newId, city: newCity, company: newCompany });
-    updateTable();
-    document.getElementById("newDeviceId").value = "";
-    document.getElementById("newCity").value = "";
-    document.getElementById("newCompany").value = "";
   };
 
   const loadCommandCount = async (deviceId) => {
@@ -222,14 +121,167 @@
     }
   };
 
-  const exportEntries = () => {
+  const animateCounter = (el, nextValue, duration = 500) => {
+    const startValue = Number(el.dataset.value || '0');
+    const startTime = performance.now();
 
-    window.open('/dashboard_entries.txt', '_blank');
+    const tick = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const value = Math.round(startValue + (nextValue - startValue) * eased);
+      el.textContent = value;
+
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        el.dataset.value = String(nextValue);
+      }
+    };
+
+    requestAnimationFrame(tick);
+  };
+
+  const setLoader = (isLoading) => {
+    document.getElementById('statusLoader').hidden = !isLoading;
+  };
+
+  const createCardElement = (id, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'col-12 col-sm-12 col-md-6 col-lg-4 mb-4';
+    wrapper.dataset.deviceId = id;
+
+    wrapper.innerHTML = `
+      <div class="card h-100 card-enter" style="animation-delay:${index * 90}ms">
+        <div class="card-body">
+          <h2 class="card-title h5 js-id"></h2>
+          <p class="card-text"><small class="small-muted js-city-company"></small></p>
+          <p class="card-text"><span class="status-pill js-status"></span></p>
+          <p class="card-text"><small class="small-muted js-updated"></small></p>
+          <p class="card-text">🚿 Lavados hoy: <strong class="js-count">0</strong></p>
+          <button class="btn neon-btn btn-sm" onclick="refreshDevice('${id}')">🔄 Actualizar</button>
+        </div>
+      </div>
+    `;
+
+    return wrapper;
+  };
+
+  const updateCard = (wrapper, dev, data, count, isNew) => {
+    const card = wrapper.querySelector('.card');
+    const status = wrapper.querySelector('.js-status');
+    const cityCompany = wrapper.querySelector('.js-city-company');
+    const updated = wrapper.querySelector('.js-updated');
+
+    wrapper.querySelector('.js-id').textContent = dev.id;
+    cityCompany.textContent = `${dev.city || 'Sin ciudad'} — ${dev.company || 'Sin empresa'}`;
+    wrapper.querySelector('.js-count').textContent = count;
+
+    let timestamp;
+    try {
+      timestamp = new Date(Number(data.Timestamp)).toLocaleString();
+    } catch {
+      timestamp = new Date().toLocaleString();
+    }
+    updated.textContent = `Actualizado: ${timestamp}`;
+
+    status.className = `status-pill js-status ${data.IsConnected ? 'connected' : 'disconnected'}`;
+    status.textContent = data.IsConnected ? 'Conectado ✅' : 'No conectado ❌';
+
+    const oldState = previousStates.get(dev.id);
+    if (!isNew && oldState !== undefined && oldState !== data.IsConnected) {
+      card.classList.remove('status-changed');
+      void card.offsetWidth;
+      card.classList.add('status-changed');
+    }
+    previousStates.set(dev.id, data.IsConnected);
+  };
+
+  const updateSummary = (connectedCount, disconnectedCount) => {
+    animateCounter(document.getElementById('connectedCount'), connectedCount);
+    animateCounter(document.getElementById('disconnectedCount'), disconnectedCount);
+  };
+
+  const updateTable = async () => {
+    setLoader(true);
+    const cardContainer = document.getElementById('deviceCards');
+    const existingCards = new Map(
+      [...cardContainer.querySelectorAll('[data-device-id]')].map(el => [el.dataset.deviceId, el])
+    );
+
+    const statuses = await Promise.all(devices.map(dev => loadStatus(dev.id)));
+    const counts = await Promise.all(devices.map(dev => loadCommandCount(dev.id)));
+
+    let connectedCount = 0;
+    let disconnectedCount = 0;
+
+    devices.forEach((dev, index) => {
+      const data = statuses[index];
+      const count = counts[index];
+      let cardWrapper = existingCards.get(dev.id);
+      const isNew = !cardWrapper;
+
+      if (!cardWrapper) {
+        cardWrapper = createCardElement(dev.id, index);
+        cardContainer.appendChild(cardWrapper);
+      }
+
+      updateCard(cardWrapper, dev, data, count, isNew);
+
+      if (data.IsConnected) {
+        connectedCount++;
+      } else {
+        disconnectedCount++;
+        const old = previousStates.get(dev.id);
+        if (old !== false) notifyDisconnect(data.DeviceId || dev.id);
+      }
+
+      existingCards.delete(dev.id);
+    });
+
+    existingCards.forEach(orphan => orphan.remove());
+    updateSummary(connectedCount, disconnectedCount);
+    setLoader(false);
+  };
+
+  const refreshDevice = async () => {
+    await updateTable();
+  };
+
+  const addDevice = async () => {
+    const newId = document.getElementById('newDeviceId').value.trim();
+    const newCity = document.getElementById('newCity').value.trim();
+    const newCompany = document.getElementById('newCompany').value.trim();
+
+    if (!newId) {
+      alert('El ID del dispositivo es obligatorio.');
+      return;
+    }
+    if (devices.find(d => d.id === newId)) {
+      alert('El dispositivo ya existe en el dashboard.');
+      return;
+    }
+
+    const entry = { id: newId, city: newCity || '', company: newCompany || '', timestamp: Date.now() };
+
+    try {
+      await fetch('/api/save-entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+    } catch (err) {
+      console.error('Error guardando entrada:', err);
+    }
+
+    devices.push({ id: newId, city: newCity, company: newCompany });
+    await updateTable();
+    document.getElementById('newDeviceId').value = '';
+    document.getElementById('newCity').value = '';
+    document.getElementById('newCompany').value = '';
   };
 
   updateTable();
   setInterval(updateTable, 30000);
 </script>
-
 </body>
 </html>
