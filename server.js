@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const session = require('express-session');
 const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,6 +9,10 @@ const path = require('path');
 
 const contadorPath = path.join(__dirname, 'contador.json');
 const entriesTxtPath = path.join(__dirname, 'dashboard_entries.txt');
+
+const AUTH_USER = process.env.AUTH_USER || 'admin';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'admin123';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'cambia-este-secreto-en-produccion';
 
 function leerContadores() {
   if (!fs.existsSync(contadorPath)) {
@@ -21,10 +26,55 @@ function guardarContadores(contadores) {
   fs.writeFileSync(contadorPath, JSON.stringify(contadores, null, 2));
 }
 
+function requireAuth(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'No autenticado' });
+  }
+  next();
+}
+
 app.use(bodyParser.json());
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
 app.use(express.static('public'));
 
-app.post('/api/status', async (req, res) => {
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (username === AUTH_USER && password === AUTH_PASSWORD) {
+    req.session.user = { username };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error cerrando sesión:', err);
+      return res.status(500).json({ ok: false, error: 'No se pudo cerrar sesión' });
+    }
+    res.clearCookie('connect.sid');
+    return res.json({ ok: true });
+  });
+});
+
+app.get('/api/me', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ authenticated: false });
+  }
+  return res.json({ authenticated: true, user: req.session.user });
+});
+
+app.post('/api/status', requireAuth, async (req, res) => {
   const { deviceId } = req.body;
 
   try {
@@ -45,15 +95,15 @@ app.post('/api/status', async (req, res) => {
   }
 });
 
-app.post('/api/contador', (req, res) => {
+app.post('/api/contador', requireAuth, (req, res) => {
   const { deviceId } = req.body;
   const contadores = leerContadores();
   const count = contadores[deviceId] || 0;
   res.json({ deviceId, count });
 });
 
-app.post('/api/contador/incrementar', (req, res) => {
-  const { deviceId, comando } = req.body;
+app.post('/api/contador/incrementar', requireAuth, (req, res) => {
+  const { deviceId } = req.body;
 
   const contadores = leerContadores();
   contadores[deviceId] = (contadores[deviceId] || 0) + 1;
@@ -61,7 +111,8 @@ app.post('/api/contador/incrementar', (req, res) => {
 
   res.json({ success: true, count: contadores[deviceId] });
 });
-app.post('/api/save-entry', (req, res) => {
+
+app.post('/api/save-entry', requireAuth, (req, res) => {
   const entry = req.body || {};
   const normalized = {
     deviceId: entry.id || entry.deviceId || '',
@@ -80,7 +131,7 @@ app.post('/api/save-entry', (req, res) => {
   }
 });
 
-app.get('/dashboard_entries.txt', (req, res) => {
+app.get('/dashboard_entries.txt', requireAuth, (req, res) => {
   if (fs.existsSync(entriesTxtPath)) {
     res.sendFile(entriesTxtPath);
   } else {
