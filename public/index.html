@@ -2,101 +2,262 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard IoT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard IoT Futurista</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
   <style>
+    :root {
+      --bg-1: #05070f;
+      --bg-2: #0f1430;
+      --glass: rgba(16, 21, 48, 0.65);
+      --cyan: #3dfdff;
+      --pink: #ff4fd8;
+      --text: #d9ecff;
+      --ok: #39ff8f;
+      --bad: #ff4c73;
+    }
+
     body {
-      background-color: #f4f6f9;
-      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(61, 253, 255, 0.2), transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(255, 79, 216, 0.18), transparent 35%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2));
+      overflow-x: hidden;
     }
+
+    .glow-panel {
+      background: var(--glass);
+      border: 1px solid rgba(61, 253, 255, 0.25);
+      border-radius: 16px;
+      box-shadow: 0 0 25px rgba(61, 253, 255, 0.12);
+      backdrop-filter: blur(6px);
+    }
+
+    .hidden { display: none !important; }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: .15rem;
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(61, 253, 255, 0.7);
+    }
+
     .sidebar {
-      height: 100vh;
-      background: #343a40;
-      color: white;
-    }
-    .sidebar h4 {
+      min-height: 100vh;
+      width: 250px;
       padding: 1rem;
-      border-bottom: 1px solid #495057;
+      border-right: 1px solid rgba(61, 253, 255, .2);
     }
+
     .sidebar a {
-      color: white;
-      padding: 0.75rem 1rem;
       display: block;
       text-decoration: none;
+      color: var(--text);
+      padding: .65rem .75rem;
+      margin-bottom: .5rem;
+      border-radius: 10px;
+      transition: transform .2s, box-shadow .2s, background .2s;
     }
+
     .sidebar a:hover {
-      background: #495057;
+      transform: translateX(4px);
+      box-shadow: 0 0 12px rgba(255, 79, 216, .35);
+      background: rgba(255, 79, 216, .12);
     }
-    .connected { color: green; font-weight: bold; }
-    .disconnected { color: red; font-weight: bold; }
+
+    .device-card {
+      transition: transform .25s ease, box-shadow .25s ease;
+      border: 1px solid rgba(61, 253, 255, 0.24);
+      background: rgba(7, 15, 40, 0.85);
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(16px) scale(.98);
+      animation: reveal .5s ease forwards;
+    }
+
+    .device-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 0 20px rgba(61, 253, 255, .2);
+    }
+
+    @keyframes reveal {
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+      animation: pulse 1.8s infinite;
+    }
+
+    .status-ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .status-bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: .65; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .btn-neon {
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      background: transparent;
+    }
+
+    .btn-neon:hover { background: rgba(61, 253, 255, .12); color: #fff; }
+
+    .toast-box {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: .7rem 1rem;
+      border-radius: 10px;
+      color: white;
+      background: rgba(9, 16, 42, .95);
+      border: 1px solid rgba(61, 253, 255, .4);
+      box-shadow: 0 0 14px rgba(61, 253, 255, .3);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(15px);
+      transition: .25s;
+    }
+
+    .toast-box.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .login-card {
+      max-width: 420px;
+      margin: 8vh auto;
+      padding: 1.5rem;
+    }
+
+    .form-control {
+      background: rgba(5, 8, 22, .85);
+      border: 1px solid rgba(61, 253, 255, 0.22);
+      color: var(--text);
+    }
+
+    .form-control:focus {
+      box-shadow: 0 0 0 .2rem rgba(61, 253, 255, .25);
+      background: rgba(5, 8, 22, .95);
+      color: var(--text);
+      border-color: var(--cyan);
+    }
   </style>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(reg => console.log("Service Worker registrado ✅"))
-        .catch(err => console.error("Error SW ❌", err));
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
   </script>
 </head>
 <body>
-
-<div class="d-flex">
-  <div class="sidebar p-3">
-   <div class="text-center mb-4">
-  <a href="/">
-    <img src="Img/logo.jpeg" alt="Logo" style="max-width: 100px; height: auto;">
-  </a>
-</div>
-<a href="#">🔧 Panel Principal</a>
-
-    <a href="#">📡 Dispositivos</a>
-    <a href="#">⚙️ Configuración</a>
+  <div id="loginView" class="container">
+    <div class="glow-panel login-card">
+      <h2 class="brand text-center mb-4">IOT // LOGIN</h2>
+      <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <input id="username" class="form-control" placeholder="admin">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input id="password" type="password" class="form-control" placeholder="••••••••">
+      </div>
+      <button id="loginBtn" class="btn btn-neon w-100">Ingresar</button>
+      <small id="loginError" class="text-danger d-block mt-3"></small>
+      <small class="d-block mt-2">Demo: admin / admin123</small>
+    </div>
   </div>
 
-  <div class="flex-grow-1 p-4">
-    <h2 class="mb-4">Estado de dispositivos IIWSS</h2>
+  <div id="dashboardView" class="hidden">
+    <div class="d-flex">
+      <aside class="sidebar glow-panel">
+        <div class="text-center mb-3">
+          <img src="Img/logo.jpeg" alt="Logo" style="max-width:90px;border-radius:12px;">
+        </div>
+        <h5 class="brand">NEON PANEL</h5>
+        <a href="#">⚡ Panel principal</a>
+        <a href="#">📡 Dispositivos</a>
+        <a href="/device_audit.txt" target="_blank">📝 Auditoría TXT</a>
+        <button id="logoutBtn" class="btn btn-sm btn-outline-light mt-3">Cerrar sesión</button>
+      </aside>
 
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <div class="card shadow-sm border-start border-4 border-primary">
-          <div class="card-body">
-            <h5 class="card-title">Agregar nuevo dispositivo</h5>
-            <div class="mb-2">
-              <input type="text" id="newDeviceId" class="form-control" placeholder="S/N del dispositivo">
-            </div>
-            <div class="mb-2">
-              <input type="text" id="newCity" class="form-control" placeholder="Ciudad">
-            </div>
-            <div class="mb-2">
-              <input type="text" id="newCompany" class="form-control" placeholder="Empresa">
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-success" onclick="addDevice()">Agregar</button>
-              <!-- <button class="btn btn-outline-secondary" onclick="exportEntries()">Exportar .txt</button> -->
+      <main class="flex-grow-1 p-4">
+        <h2 class="mb-3">Estado de dispositivos IIWSS</h2>
+        <div id="summary" class="glow-panel p-3 mb-4">Cargando resumen...</div>
+
+        <div class="row mb-4">
+          <div class="col-lg-5">
+            <div class="glow-panel p-3">
+              <h5 id="formTitle">Agregar nuevo dispositivo</h5>
+              <input type="text" id="newDeviceId" class="form-control mb-2" placeholder="S/N del dispositivo">
+              <input type="text" id="newCity" class="form-control mb-2" placeholder="Ciudad">
+              <input type="text" id="newCompany" class="form-control mb-3" placeholder="Empresa">
+              <div class="d-flex gap-2">
+                <button class="btn btn-neon" id="saveBtn">Guardar</button>
+                <button class="btn btn-outline-secondary hidden" id="cancelEditBtn">Cancelar edición</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="col-md-8">
-        <div id="summary" class="alert alert-info">Cargando resumen...</div>
-      </div>
-    </div>
 
-    <div class="row" id="deviceCards"></div>
+        <div class="row" id="deviceCards"></div>
+      </main>
+    </div>
   </div>
-</div>
+
+  <div id="toast" class="toast-box"></div>
 
 <script>
+  let devices = [];
+  let editTargetId = null;
 
-  let devices = [
-    { id: "P3240005S3P", city: "Monterrey", company: "Bimbo" },
-    { id: "P3240279C94", city: "Queretaro", company: "Coca-cola" },
-    { id: "P3240367R8P", city: "Sinaloa", company: "Pepsi" },
-    { id: "P3240160I1M", city: "León", company: "Interiberica" }
+  const loginView = document.getElementById('loginView');
+  const dashboardView = document.getElementById('dashboardView');
 
-  ];
+  const authFetch = async (url, options = {}) => {
+    const res = await fetch(url, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+    });
+
+    if (res.status === 401) {
+      showLogin();
+      throw new Error('No autorizado');
+    }
+
+    return res;
+  };
+
+  function showToast(message, isError = false) {
+    const box = document.getElementById('toast');
+    box.textContent = message;
+    box.style.borderColor = isError ? 'rgba(255,76,115,.6)' : 'rgba(61,253,255,.6)';
+    box.classList.add('show');
+    setTimeout(() => box.classList.remove('show'), 1800);
+  }
+
+  function showLogin() {
+    dashboardView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+  }
+
+  function showDashboard() {
+    loginView.classList.add('hidden');
+    dashboardView.classList.remove('hidden');
+  }
 
   if ('Notification' in window && Notification.permission !== 'granted') {
     Notification.requestPermission();
@@ -111,125 +272,208 @@
     }
   }
 
-  const loadStatus = async (deviceId) => {
+  async function loadStatus(deviceId) {
     try {
-      const res = await fetch('/api/status', {
+      const res = await authFetch('/api/status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId })
       });
       return await res.json();
-    } catch (err) {
+    } catch (_) {
       return { DeviceId: deviceId, IsConnected: false, Timestamp: Date.now().toString() };
     }
-  };
+  }
 
-  const updateTable = async () => {
-    const cardContainer = document.getElementById("deviceCards");
-    cardContainer.innerHTML = "";
-
-    let connectedCount = 0;
-    let disconnectedCount = 0;
-
-    for (const dev of devices) {
-      const id = dev.id;
-      const data = await loadStatus(id);
-      const count = await loadCommandCount(id);
-
-      const statusClass = data.IsConnected ? 'text-success' : 'text-danger';
-      const statusText = data.IsConnected ? 'Conectado ✅' : 'No conectado ❌';
-      let timestamp;
-      try { timestamp = new Date(Number(data.Timestamp)).toLocaleString(); }
-      catch { timestamp = new Date().toLocaleString(); }
-
-      if (data.IsConnected) connectedCount++;
-      else {
-        disconnectedCount++;
-        notifyDisconnect(data.DeviceId || id);
-      }
-
-      cardContainer.innerHTML += `
-        <div class="col-12 col-sm-12 col-md-6 col-lg-4 mb-4">
-          <div class="card shadow-sm border-start border-4 ${data.IsConnected ? 'border-success' : 'border-danger'}">
-            <div class="card-body">
-              <h5 class="card-title">${id}</h5>
-              <p class="card-text"><small class="text-muted">${dev.city} — ${dev.company}</small></p>
-              <p class="card-text ${statusClass}"><strong>${statusText}</strong></p>
-              <p class="card-text"><small class="text-muted">Actualizado: ${timestamp}</small></p>
-              <p class="card-text">🚿 Lavados hoy: <strong>${count}</strong></p>
-              <button class="btn btn-outline-primary btn-sm" onclick="refreshDevice('${id}')">🔄 Actualizar</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    document.getElementById("summary").innerHTML = `
-      ✅ Conectados: ${connectedCount} | ❌ Desconectados: ${disconnectedCount}
-    `;
-  };
-
-  const refreshDevice = async (deviceId) => {
-    await updateTable();
-  };
-
-  const addDevice = async () => {
-    const newId = document.getElementById("newDeviceId").value.trim();
-    const newCity = document.getElementById("newCity").value.trim();
-    const newCompany = document.getElementById("newCompany").value.trim();
-
-    if (!newId) {
-      alert('El ID del dispositivo es obligatorio.');
-      return;
-    }
-    if (devices.find(d => d.id === newId)) {
-      alert('El dispositivo ya existe en el dashboard.');
-      return;
-    }
-
-    const entry = { id: newId, city: newCity || '', company: newCompany || '', timestamp: Date.now() };
-
-   
+  async function loadCommandCount(deviceId) {
     try {
-      await fetch('/api/save-entry', {
+      const res = await authFetch('/api/contador', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-      });
-    } catch (err) {
-      console.error('Error guardando entrada:', err);
-    }
-
-    devices.push({ id: newId, city: newCity, company: newCompany });
-    updateTable();
-    document.getElementById("newDeviceId").value = "";
-    document.getElementById("newCity").value = "";
-    document.getElementById("newCompany").value = "";
-  };
-
-  const loadCommandCount = async (deviceId) => {
-    try {
-      const res = await fetch('/api/contador', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId })
       });
       const data = await res.json();
       return data.count || 0;
-    } catch (err) {
-      console.error('Error al cargar contador:', err);
+    } catch (_) {
       return 0;
     }
-  };
+  }
 
-  const exportEntries = () => {
+  async function fetchDevices() {
+    const res = await authFetch('/api/devices');
+    devices = await res.json();
+  }
 
-    window.open('/dashboard_entries.txt', '_blank');
-  };
+  function startEdit(deviceId) {
+    const dev = devices.find((d) => d.id === deviceId);
+    if (!dev) return;
 
-  updateTable();
-  setInterval(updateTable, 30000);
+    editTargetId = deviceId;
+    document.getElementById('formTitle').textContent = `Editar dispositivo ${deviceId}`;
+    document.getElementById('newDeviceId').value = dev.id;
+    document.getElementById('newCity').value = dev.city;
+    document.getElementById('newCompany').value = dev.company;
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+  }
+
+  function resetForm() {
+    editTargetId = null;
+    document.getElementById('formTitle').textContent = 'Agregar nuevo dispositivo';
+    document.getElementById('newDeviceId').value = '';
+    document.getElementById('newCity').value = '';
+    document.getElementById('newCompany').value = '';
+    document.getElementById('cancelEditBtn').classList.add('hidden');
+  }
+
+  async function removeDevice(deviceId) {
+    if (!confirm(`¿Eliminar dispositivo ${deviceId}?`)) return;
+
+    try {
+      await authFetch(`/api/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' });
+      showToast('Dispositivo eliminado');
+      await fetchDevices();
+      await updateTable();
+    } catch (err) {
+      showToast(err.message || 'No se pudo eliminar', true);
+    }
+  }
+
+  async function saveDevice() {
+    const newId = document.getElementById('newDeviceId').value.trim();
+    const newCity = document.getElementById('newCity').value.trim();
+    const newCompany = document.getElementById('newCompany').value.trim();
+
+    if (!newId) {
+      showToast('El ID del dispositivo es obligatorio', true);
+      return;
+    }
+
+    const payload = { id: newId, city: newCity, company: newCompany };
+
+    try {
+      if (editTargetId) {
+        await authFetch(`/api/devices/${encodeURIComponent(editTargetId)}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        showToast('Dispositivo actualizado');
+      } else {
+        await authFetch('/api/devices', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        showToast('Dispositivo agregado');
+      }
+
+      resetForm();
+      await fetchDevices();
+      await updateTable();
+    } catch (err) {
+      showToast('Operación no completada', true);
+    }
+  }
+
+  async function updateTable() {
+    const cardContainer = document.getElementById('deviceCards');
+    cardContainer.innerHTML = '';
+
+    let connectedCount = 0;
+    let disconnectedCount = 0;
+
+    for (let i = 0; i < devices.length; i++) {
+      const dev = devices[i];
+      const data = await loadStatus(dev.id);
+      const count = await loadCommandCount(dev.id);
+
+      const isConnected = Boolean(data.IsConnected);
+      if (isConnected) connectedCount++;
+      else {
+        disconnectedCount++;
+        notifyDisconnect(dev.id);
+      }
+
+      const timestamp = new Date(Number(data.Timestamp || Date.now())).toLocaleString();
+      const card = document.createElement('div');
+      card.className = 'col-12 col-md-6 col-lg-4 mb-4';
+      card.innerHTML = `
+        <div class="card device-card" style="animation-delay:${i * 70}ms">
+          <div class="card-body">
+            <h5 class="card-title">${dev.id}</h5>
+            <p class="card-text"><small>${dev.city || '-'} — ${dev.company || '-'}</small></p>
+            <p class="card-text">
+              <span class="status-dot ${isConnected ? 'status-ok' : 'status-bad'}"></span>
+              <strong>${isConnected ? 'Conectado' : 'No conectado'}</strong>
+            </p>
+            <p class="card-text"><small>Actualizado: ${timestamp}</small></p>
+            <p class="card-text">🚿 Lavados hoy: <strong>${count}</strong></p>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-sm btn-neon" data-action="refresh" data-id="${dev.id}">Actualizar</button>
+              <button class="btn btn-sm btn-outline-info" data-action="edit" data-id="${dev.id}">Editar</button>
+              <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${dev.id}">Eliminar</button>
+            </div>
+          </div>
+        </div>`;
+      cardContainer.appendChild(card);
+    }
+
+    document.getElementById('summary').innerHTML = `✅ Conectados: ${connectedCount} | ❌ Desconectados: ${disconnectedCount}`;
+  }
+
+  document.getElementById('deviceCards').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+
+    if (action === 'refresh') await updateTable();
+    if (action === 'edit') startEdit(id);
+    if (action === 'delete') await removeDevice(id);
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', saveDevice);
+  document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (!res.ok) throw new Error('Credenciales inválidas');
+
+      document.getElementById('loginError').textContent = '';
+      showDashboard();
+      await fetchDevices();
+      await updateTable();
+    } catch (err) {
+      document.getElementById('loginError').textContent = 'Usuario o contraseña incorrectos';
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    showLogin();
+  });
+
+  async function bootstrap() {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (!res.ok) throw new Error('No login');
+
+      showDashboard();
+      await fetchDevices();
+      await updateTable();
+      setInterval(updateTable, 30000);
+    } catch (_) {
+      showLogin();
+    }
+  }
+
+  bootstrap();
 </script>
-
 </body>
 </html>
