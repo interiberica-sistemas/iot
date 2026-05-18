@@ -1,0 +1,2 @@
+{"username":"evazquez","password":"1nter.1berica#","role":"admin","name":"Administrador"}
+{"username":"operador","password":"op2024","role":"operator","name":"Operador"}
