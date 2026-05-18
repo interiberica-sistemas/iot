@@ -3,285 +3,1171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard IoT</title>
+  <title>Dashboard IoT — IIWSS</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="/styles.css">
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(() => console.log('Service Worker registrado ✅'))
-        .catch(err => console.error('Error SW ❌', err));
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #030b18;
+      --bg-mid: #071428;
+      --neon-cyan: #3df8ff;
+      --neon-magenta: #ff4fd8;
+      --neon-green: #65ff9b;
+      --neon-amber: #ffcd3d;
+      --text-primary: #ebf3ff;
+      --text-secondary: #8a9fc4;
+      --danger: #ff5d9f;
+      --success: #4cffbe;
+      --card-bg: rgba(10, 20, 45, 0.72);
+      --card-border: rgba(61,248,255,0.28);
+      --sidebar-w: 240px;
     }
-  </script>
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text-primary);
+      background:
+        radial-gradient(ellipse 70% 55% at 85% 5%, rgba(61,248,255,0.09) 0%, transparent 65%),
+        radial-gradient(ellipse 55% 65% at 5% 90%, rgba(255,79,216,0.08) 0%, transparent 65%),
+        linear-gradient(150deg, #030b18 0%, #071428 55%, #0a0d1e 100%);
+      background-attachment: fixed;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(61,248,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(61,248,255,0.025) 1px, transparent 1px);
+      background-size: 52px 52px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── SIDEBAR ──────────────────────────────────────────── */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: rgba(3,9,22,0.9);
+      border-right: 1px solid rgba(61,248,255,0.12);
+      backdrop-filter: blur(14px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 1rem;
+    }
+    .sidebar-logo {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .sidebar-logo img {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid var(--card-border);
+    }
+    .sidebar-logo .brand-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8rem;
+      font-weight: 900;
+      color: var(--neon-cyan);
+      letter-spacing: 0.1em;
+      margin-top: 0.5rem;
+      text-shadow: 0 0 14px rgba(61,248,255,0.5);
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.65rem 0.9rem;
+      margin-bottom: 0.2rem;
+      border-radius: 12px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 400;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .nav-link .icon { font-size: 1.1rem; }
+    .nav-link:hover, .nav-link.active {
+      color: var(--text-primary);
+      background: rgba(61,248,255,0.1);
+      border-color: rgba(61,248,255,0.25);
+    }
+    .nav-link.active { font-weight: 500; }
+    .sidebar-footer {
+      margin-top: auto;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 1rem;
+    }
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.8rem;
+    }
+    .user-chip .avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; color: #000;
+      flex-shrink: 0;
+    }
+    .btn-logout {
+      background: none; border: none;
+      color: var(--danger); font-size: 0.78rem;
+      cursor: pointer; padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      transition: background 0.2s;
+      width: 100%;
+      text-align: left;
+      margin-top: 0.4rem;
+    }
+    .btn-logout:hover { background: rgba(255,93,159,0.12); }
+
+    /* ── MAIN ─────────────────────────────────────────────── */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── TABS ─────────────────────────────────────────────── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── PAGE HEADER ──────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.75rem;
+    }
+    .page-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── CARDS ────────────────────────────────────────────── */
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 20px 50px rgba(0,0,0,0.35);
+      padding: 1.25rem 1.4rem;
+    }
+
+    /* ── KPI STATS ────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 1.1rem 1.3rem;
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      filter: blur(28px);
+      opacity: 0.25;
+    }
+    .kpi-card.cyan::after  { background: var(--neon-cyan);    top: -20px; right: -20px; }
+    .kpi-card.green::after { background: var(--neon-green);   top: -20px; right: -20px; }
+    .kpi-card.magenta::after { background: var(--neon-magenta); top: -20px; right: -20px; }
+    .kpi-card.amber::after { background: var(--neon-amber);   top: -20px; right: -20px; }
+    .kpi-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 0.4rem;
+    }
+    .kpi-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .kpi-card.cyan .kpi-value    { color: var(--neon-cyan); }
+    .kpi-card.green .kpi-value   { color: var(--neon-green); }
+    .kpi-card.magenta .kpi-value { color: var(--neon-magenta); }
+    .kpi-card.amber .kpi-value   { color: var(--neon-amber); }
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+    }
+
+    /* ── CHARTS ───────────────────────────────────────────── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+    @media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    /* ── DEVICE CARDS ─────────────────────────────────────── */
+    .device-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      backdrop-filter: blur(12px);
+      padding: 1.25rem 1.4rem;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      animation: cardIn 0.5s ease both;
+    }
+    .device-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.4), 0 0 20px rgba(61,248,255,0.18);
+    }
+    @keyframes cardIn {
+      from { opacity:0; transform: translateY(20px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .device-id {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.82rem;
+      color: var(--neon-cyan);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.25rem;
+    }
+    .device-meta { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.28rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .status-pill.connected    { background: var(--success); color: #032e1a; box-shadow: 0 0 14px rgba(76,255,190,0.5); }
+    .status-pill.disconnected { background: var(--danger);  color: #3a0018; box-shadow: 0 0 14px rgba(255,93,159,0.45); }
+    .wash-count {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--neon-amber);
+    }
+    .wash-label { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── NEON BTN ─────────────────────────────────────────── */
+    .neon-btn {
+      border: 1px solid rgba(61,248,255,0.4);
+      color: var(--text-primary);
+      background: linear-gradient(90deg, rgba(61,248,255,0.12), rgba(255,79,216,0.1));
+      border-radius: 10px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .neon-btn:hover { transform: translateY(-2px); box-shadow: 0 0 16px rgba(61,248,255,0.3); }
+    .btn-danger-sm {
+      border: 1px solid rgba(255,93,159,0.4);
+      color: var(--danger);
+      background: rgba(255,93,159,0.1);
+      border-radius: 8px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .btn-danger-sm:hover { background: rgba(255,93,159,0.2); }
+
+    /* ── TABLE ────────────────────────────────────────────── */
+    .iot-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .iot-table th {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(61,248,255,0.15);
+      text-align: left;
+    }
+    .iot-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: middle;
+    }
+    .iot-table tr:hover td { background: rgba(61,248,255,0.04); }
+
+    /* ── FORM INPUTS ──────────────────────────────────────── */
+    .iot-input {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .iot-input:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 0 3px rgba(61,248,255,0.12);
+    }
+    .iot-input::placeholder { color: rgba(255,255,255,0.3); }
+
+    /* ── MODAL ────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-box {
+      background: rgba(7,17,40,0.95);
+      border: 1px solid var(--card-border);
+      border-radius: 22px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+    }
+    .modal-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      margin-bottom: 1.25rem;
+    }
+    .form-field { margin-bottom: 0.9rem; }
+    .form-label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+
+    /* ── LOADER ───────────────────────────────────────────── */
+    .loader { width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); border-top-color: var(--neon-cyan); animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── TOAST ────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: rgba(10,20,45,0.95);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.75rem 1.2rem;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      z-index: 9999;
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+  </style>
 </head>
 <body>
-<div class="d-flex">
-  <aside class="sidebar p-3">
-    <div class="text-center mb-4">
-      <a href="/">
-        <img src="Img/logo.jpeg" alt="Logo" style="max-width: 100px; height: auto;">
-      </a>
-    </div>
-    <a href="#">🔧 Panel Principal</a>
-    <a href="#">📡 Dispositivos</a>
-    <a href="#">⚙️ Configuración</a>
-  </aside>
 
-  <main class="flex-grow-1 p-4">
-    <h1 class="mb-4 fs-3">Estado de dispositivos IIWSS</h1>
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <img src="Img/logo.jpeg" alt="Logo" onerror="this.style.display='none'">
+    <div class="brand-name">IIWSS</div>
+  </div>
 
-    <div class="row mb-4 g-4">
-      <div class="col-md-4">
-        <div class="card glass-card h-100">
-          <div class="card-body">
-            <h2 class="card-title h5">Agregar nuevo dispositivo</h2>
-            <div class="mb-2">
-              <input type="text" id="newDeviceId" class="form-control" placeholder="S/N del dispositivo">
-            </div>
-            <div class="mb-2">
-              <input type="text" id="newCity" class="form-control" placeholder="Ciudad">
-            </div>
-            <div class="mb-2">
-              <input type="text" id="newCompany" class="form-control" placeholder="Empresa">
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn neon-btn" onclick="addDevice()">Agregar</button>
-            </div>
-          </div>
-        </div>
+  <nav>
+    <a class="nav-link active" onclick="showPage('dashboard')">
+      <span class="icon">📊</span> Panel Principal
+    </a>
+    <a class="nav-link" onclick="showPage('devices')">
+      <span class="icon">📡</span> Dispositivos
+    </a>
+    <a class="nav-link" onclick="showPage('config')">
+      <span class="icon">⚙️</span> Configuración
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">A</div>
+      <div>
+        <div style="font-weight:500;font-size:0.82rem" id="userName">Admin</div>
+        <div style="color:var(--text-secondary);font-size:0.72rem" id="userRole">admin</div>
       </div>
-      <div class="col-md-8">
-        <section id="summary" class="summary-box" aria-live="polite">
-          <div class="summary-stats">
-            <div class="summary-item">✅ Conectados: <span id="connectedCount">0</span></div>
-            <div class="summary-item">❌ Desconectados: <span id="disconnectedCount">0</span></div>
-          </div>
-          <div id="statusLoader" class="d-flex align-items-center gap-2 small-muted" hidden>
-            <div class="loader" aria-hidden="true"></div>
-            Consultando estado...
-          </div>
-        </section>
+    </div>
+    <button class="btn-logout" onclick="logout()">⬅️ Cerrar sesión</button>
+  </div>
+</aside>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<main class="main-content">
+
+  <!-- ── PAGE: DASHBOARD ── -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div class="page-title">Panel Principal</div>
+      <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <span id="loader-dash" style="display:none"><span class="loader"></span></span>
+        <button class="neon-btn" onclick="exportCSV()">📥 CSV</button>
+        <button class="neon-btn" onclick="exportPDF()">📄 PDF</button>
+        <button class="neon-btn" onclick="refreshAll()">🔄 Actualizar</button>
       </div>
     </div>
 
-    <div class="row" id="deviceCards"></div>
-  </main>
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Total Dispositivos</div>
+        <div class="kpi-value" id="kpiTotal">—</div>
+        <div class="kpi-sub">registrados</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Conectados</div>
+        <div class="kpi-value" id="kpiConnected">—</div>
+        <div class="kpi-sub">en línea ahora</div>
+      </div>
+      <div class="kpi-card magenta">
+        <div class="kpi-label">Desconectados</div>
+        <div class="kpi-value" id="kpiDisc">—</div>
+        <div class="kpi-sub">fuera de línea</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Lavadas Hoy</div>
+        <div class="kpi-value" id="kpiWashes">—</div>
+        <div class="kpi-sub">total acumulado</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="chart-grid">
+      <div class="glass-card">
+        <div class="chart-title">Estado de Conexión</div>
+        <canvas id="chartStatus" height="200"></canvas>
+      </div>
+      <div class="glass-card">
+        <div class="chart-title">Lavadas por Dispositivo (Hoy)</div>
+        <canvas id="chartWashes" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="glass-card" style="margin-bottom:1.75rem">
+      <div class="chart-title">Historial de Lavadas (Últimos 7 días)</div>
+      <canvas id="chartHistory" height="110"></canvas>
+    </div>
+
+    <!-- Device status cards -->
+    <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
+      <div class="chart-title" style="margin-bottom:0">Estado de Dispositivos</div>
+    </div>
+    <div class="row g-3" id="deviceCards"></div>
+  </div>
+
+  <!-- ── PAGE: DEVICES CRUD ── -->
+  <div id="page-devices" class="page">
+    <div class="page-header">
+      <div class="page-title">Dispositivos</div>
+      <button class="neon-btn" onclick="openModal('add')">➕ Nuevo Dispositivo</button>
+    </div>
+
+    <div class="glass-card">
+      <table class="iot-table" id="devicesTable">
+        <thead>
+          <tr>
+            <th>ID / Serial</th>
+            <th>Ciudad</th>
+            <th>Empresa</th>
+            <th>Lavadas Hoy</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="devicesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── PAGE: CONFIG ── -->
+  <div id="page-config" class="page">
+    <div class="page-header">
+      <div class="page-title">Configuración</div>
+    </div>
+    <div class="glass-card" style="max-width:520px">
+      <h3 style="font-family:'Orbitron',monospace;font-size:0.9rem;color:var(--neon-cyan);margin-bottom:1.25rem">Intervalo de Actualización</h3>
+      <div class="form-field">
+        <label class="form-label">Segundos entre actualizaciones automáticas</label>
+        <input type="number" class="iot-input" id="cfgInterval" value="30" min="10" max="300">
+      </div>
+      <button class="neon-btn" onclick="saveConfig()">💾 Guardar</button>
+      <p style="font-size:0.78rem;color:var(--text-secondary);margin-top:1rem">Los cambios aplican inmediatamente al guardar.</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══════════════════ MODAL ══════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalIfOutside(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modalTitle">Nuevo Dispositivo</div>
+    <div class="form-field">
+      <label class="form-label">ID / Serial</label>
+      <input type="text" class="iot-input" id="mDeviceId" placeholder="P3240XXX">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Ciudad</label>
+      <input type="text" class="iot-input" id="mCity" placeholder="Monterrey">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Empresa</label>
+      <input type="text" class="iot-input" id="mCompany" placeholder="Empresa S.A.">
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-top:1.25rem">
+      <button class="neon-btn" onclick="submitModal()">Guardar</button>
+      <button class="btn-danger-sm" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
 </div>
 
+<div id="toast"></div>
+
 <script>
-  let devices = [
-    { id: 'P3240005S3P', city: 'Monterrey', company: 'Bimbo' },
-    { id: 'P3240279C94', city: 'Queretaro', company: 'Coca-cola' },
-    { id: 'P3240367R8P', city: 'Sinaloa', company: 'Pepsi' },
-    { id: 'P3240160I1M', city: 'León', company: 'Interiberica' }
-  ];
+// ══════════════════════════════════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════════════════════════════════
+function exportCSV() {
+  const now    = new Date().toLocaleString('es-MX');
+  const fecha  = new Date().toISOString().split('T')[0];
 
-  const previousStates = new Map();
+  // Encabezados
+  const headers = ['ID/Serial', 'Ciudad', 'Empresa', 'Estado', 'Lavadas Hoy', 'Comando', 'Ultima Actualizacion'];
+  const rows = devices.map(dev => {
+    const st  = statusCache[dev.id] || {};
+    const sh  = shadowCache[dev.id] || {};
+    return [
+      dev.id,
+      dev.city    || '—',
+      dev.company || '—',
+      st.IsConnected ? 'Conectado' : 'Desconectado',
+      sh.dailyCount || 0,
+      sh.command    || '—',
+      sh.time       || '—'
+    ];
+  });
 
-  if ('Notification' in window && Notification.permission !== 'granted') {
-    Notification.requestPermission();
-  }
-
-  function notifyDisconnect(deviceId) {
-    if (Notification.permission === 'granted') {
-      new Notification(`🚨 Desconectado: ${deviceId}`, {
-        body: 'Uno de los dispositivos no está conectado.',
-        icon: 'icon-192.png'
-      });
+  // Historial últimos 7 días
+  const histRows = [];
+  fetch('/api/history').then(r => r.json()).then(hist => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split('T')[0]);
     }
-  }
 
-  const loadStatus = async (deviceId) => {
-    try {
-      const res = await fetch('/api/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId })
-      });
-      return await res.json();
-    } catch {
-      return { DeviceId: deviceId, IsConnected: false, Timestamp: Date.now().toString() };
-    }
-  };
+    let csv = `REPORTE IIWSS — Generado: ${now}\n\n`;
+    csv += '=== ESTADO ACTUAL DE DISPOSITIVOS ===\n';
+    csv += headers.join(',') + '\n';
+    rows.forEach(r => { csv += r.map(v => `"${v}"`).join(',') + '\n'; });
 
-  const loadCommandCount = async (deviceId) => {
-    try {
-      const res = await fetch('/api/contador', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId })
-      });
-      const data = await res.json();
-      return data.count || 0;
-    } catch (err) {
-      console.error('Error al cargar contador:', err);
-      return 0;
-    }
-  };
-
-  const animateCounter = (el, nextValue, duration = 500) => {
-    const startValue = Number(el.dataset.value || '0');
-    const startTime = performance.now();
-
-    const tick = (now) => {
-      const progress = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const value = Math.round(startValue + (nextValue - startValue) * eased);
-      el.textContent = value;
-
-      if (progress < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        el.dataset.value = String(nextValue);
-      }
-    };
-
-    requestAnimationFrame(tick);
-  };
-
-  const setLoader = (isLoading) => {
-    document.getElementById('statusLoader').hidden = !isLoading;
-  };
-
-  const createCardElement = (id, index) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'col-12 col-sm-12 col-md-6 col-lg-4 mb-4';
-    wrapper.dataset.deviceId = id;
-
-    wrapper.innerHTML = `
-      <div class="card h-100 card-enter" style="animation-delay:${index * 90}ms">
-        <div class="card-body">
-          <h2 class="card-title h5 js-id"></h2>
-          <p class="card-text"><small class="small-muted js-city-company"></small></p>
-          <p class="card-text"><span class="status-pill js-status"></span></p>
-          <p class="card-text"><small class="small-muted js-updated"></small></p>
-          <p class="card-text">🚿 Lavados hoy: <strong class="js-count">0</strong></p>
-          <button class="btn neon-btn btn-sm" onclick="refreshDevice('${id}')">🔄 Actualizar</button>
-        </div>
-      </div>
-    `;
-
-    return wrapper;
-  };
-
-  const updateCard = (wrapper, dev, data, count, isNew) => {
-    const card = wrapper.querySelector('.card');
-    const status = wrapper.querySelector('.js-status');
-    const cityCompany = wrapper.querySelector('.js-city-company');
-    const updated = wrapper.querySelector('.js-updated');
-
-    wrapper.querySelector('.js-id').textContent = dev.id;
-    cityCompany.textContent = `${dev.city || 'Sin ciudad'} — ${dev.company || 'Sin empresa'}`;
-    wrapper.querySelector('.js-count').textContent = count;
-
-    let timestamp;
-    try {
-      timestamp = new Date(Number(data.Timestamp)).toLocaleString();
-    } catch {
-      timestamp = new Date().toLocaleString();
-    }
-    updated.textContent = `Actualizado: ${timestamp}`;
-
-    status.className = `status-pill js-status ${data.IsConnected ? 'connected' : 'disconnected'}`;
-    status.textContent = data.IsConnected ? 'Conectado ✅' : 'No conectado ❌';
-
-    const oldState = previousStates.get(dev.id);
-    if (!isNew && oldState !== undefined && oldState !== data.IsConnected) {
-      card.classList.remove('status-changed');
-      void card.offsetWidth;
-      card.classList.add('status-changed');
-    }
-    previousStates.set(dev.id, data.IsConnected);
-  };
-
-  const updateSummary = (connectedCount, disconnectedCount) => {
-    animateCounter(document.getElementById('connectedCount'), connectedCount);
-    animateCounter(document.getElementById('disconnectedCount'), disconnectedCount);
-  };
-
-  const updateTable = async () => {
-    setLoader(true);
-    const cardContainer = document.getElementById('deviceCards');
-    const existingCards = new Map(
-      [...cardContainer.querySelectorAll('[data-device-id]')].map(el => [el.dataset.deviceId, el])
-    );
-
-    const statuses = await Promise.all(devices.map(dev => loadStatus(dev.id)));
-    const counts = await Promise.all(devices.map(dev => loadCommandCount(dev.id)));
-
-    let connectedCount = 0;
-    let disconnectedCount = 0;
-
-    devices.forEach((dev, index) => {
-      const data = statuses[index];
-      const count = counts[index];
-      let cardWrapper = existingCards.get(dev.id);
-      const isNew = !cardWrapper;
-
-      if (!cardWrapper) {
-        cardWrapper = createCardElement(dev.id, index);
-        cardContainer.appendChild(cardWrapper);
-      }
-
-      updateCard(cardWrapper, dev, data, count, isNew);
-
-      if (data.IsConnected) {
-        connectedCount++;
-      } else {
-        disconnectedCount++;
-        const old = previousStates.get(dev.id);
-        if (old !== false) notifyDisconnect(data.DeviceId || dev.id);
-      }
-
-      existingCards.delete(dev.id);
+    csv += '\n=== HISTORIAL ULTIMOS 7 DIAS ===\n';
+    csv += '"Fecha","ID/Serial","Ciudad","Empresa","Lavadas"\n';
+    hist.forEach(h => {
+      const dev = devices.find(d => d.id === h.deviceId) || {};
+      csv += `"${h.date}","${h.deviceId}","${dev.city||''}","${dev.company||''}","${h.count}"\n`;
     });
 
-    existingCards.forEach(orphan => orphan.remove());
-    updateSummary(connectedCount, disconnectedCount);
-    setLoader(false);
-  };
+    // Resumen KPIs
+    csv += '\n=== RESUMEN ===\n';
+    csv += `"Total Dispositivos","${devices.length}"\n`;
+    csv += `"Conectados","${devices.filter(d => statusCache[d.id]?.IsConnected).length}"\n`;
+    csv += `"Desconectados","${devices.filter(d => !statusCache[d.id]?.IsConnected).length}"\n`;
+    csv += `"Total Lavadas Hoy","${devices.reduce((s,d) => s + (shadowCache[d.id]?.dailyCount||0), 0)}"\n`;
 
-  const refreshDevice = async () => {
-    await updateTable();
-  };
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `IIWSS_reporte_${fecha}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📥 CSV descargado');
+  });
+}
 
-  const addDevice = async () => {
-    const newId = document.getElementById('newDeviceId').value.trim();
-    const newCity = document.getElementById('newCity').value.trim();
-    const newCompany = document.getElementById('newCompany').value.trim();
+// ══════════════════════════════════════════════════════════
+// EXPORT PDF
+// ══════════════════════════════════════════════════════════
+async function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const now  = new Date().toLocaleString('es-MX');
+  const fecha = new Date().toISOString().split('T')[0];
+  const W    = doc.internal.pageSize.getWidth();
 
-    if (!newId) {
-      alert('El ID del dispositivo es obligatorio.');
-      return;
+  // ── Fondo oscuro
+  doc.setFillColor(3, 11, 24);
+  doc.rect(0, 0, W, doc.internal.pageSize.getHeight(), 'F');
+
+  // ── Header
+  doc.setFillColor(11, 19, 48);
+  doc.rect(0, 0, W, 22, 'F');
+  doc.setTextColor(61, 248, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('IIWSS — Reporte de Dispositivos IoT', 14, 14);
+  doc.setFontSize(8);
+  doc.setTextColor(139, 160, 196);
+  doc.text(`Generado: ${now}`, W - 14, 14, { align: 'right' });
+
+  // ── KPIs
+  const connected = devices.filter(d => statusCache[d.id]?.IsConnected).length;
+  const totalW    = devices.reduce((s,d) => s + (shadowCache[d.id]?.dailyCount||0), 0);
+  const kpis = [
+    { label: 'Total Dispositivos', value: devices.length, color: [61,248,255] },
+    { label: 'Conectados',         value: connected,       color: [76,255,190] },
+    { label: 'Desconectados',      value: devices.length - connected, color: [255,93,159] },
+    { label: 'Lavadas Hoy',        value: totalW,          color: [255,205,61] }
+  ];
+  const kpiW = (W - 28) / 4;
+  kpis.forEach((k, i) => {
+    const x = 14 + i * (kpiW + 2);
+    doc.setFillColor(18, 28, 52);
+    doc.roundedRect(x, 26, kpiW, 18, 3, 3, 'F');
+    doc.setTextColor(...k.color);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(k.value), x + kpiW/2, 38, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(139, 160, 196);
+    doc.text(k.label, x + kpiW/2, 41, { align: 'center' });
+  });
+
+  // ── Tabla dispositivos
+  doc.setTextColor(61, 248, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Estado Actual de Dispositivos', 14, 53);
+
+  const tableRows = devices.map(dev => {
+    const st = statusCache[dev.id] || {};
+    const sh = shadowCache[dev.id] || {};
+    return [
+      dev.id,
+      dev.city    || '-',
+      dev.company || '-',
+      st.IsConnected ? 'Conectado' : 'Desconectado',
+      sh.dailyCount || 0,
+      sh.command    || '-',
+      sh.time       || '-'
+    ];
+  });
+
+  doc.autoTable({
+    startY: 56,
+    head: [['ID/Serial', 'Ciudad', 'Empresa', 'Estado', 'Lavadas', 'Comando', 'Ultima Act.']],
+    body: tableRows,
+    theme: 'grid',
+    styles: { fontSize: 8, textColor: [235,243,255], fillColor: [10,20,45], lineColor: [61,248,255], lineWidth: 0.1 },
+    headStyles: { fillColor: [11,19,48], textColor: [61,248,255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [15,28,58] },
+    columnStyles: {
+      3: { cellWidth: 30, halign: 'center' },
+      4: { halign: 'center' }
+    },
+    didParseCell: (data) => {
+      if (data.column.index === 3 && data.section === 'body') {
+        if (data.cell.raw === 'Conectado') data.cell.styles.textColor = [76,255,190];
+        else data.cell.styles.textColor = [255,93,159];
+      }
+      if (data.column.index === 4 && data.section === 'body') {
+        data.cell.styles.textColor = [255,205,61];
+      }
     }
-    if (devices.find(d => d.id === newId)) {
-      alert('El dispositivo ya existe en el dashboard.');
-      return;
+  });
+
+  // ── Grafica de lavadas por dispositivo (canvas offscreen)
+  const finalY = doc.lastAutoTable.finalY + 10;
+  doc.setTextColor(61, 248, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Lavadas por Dispositivo (Hoy)', 14, finalY);
+
+  const chartCanvas = document.createElement('canvas');
+  chartCanvas.width  = 900;
+  chartCanvas.height = 320;
+  document.body.appendChild(chartCanvas);
+
+  const labels = devices.map(d => d.company || d.id.slice(-7));
+  const values = devices.map(d => shadowCache[d.id]?.dailyCount || 0);
+  const colors = ['#3df8ff','#ff4fd8','#65ff9b','#ffcd3d','#a78bfa','#fb923c','#34d399'];
+
+  const tempChart = new Chart(chartCanvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Lavadas hoy',
+        data: values,
+        backgroundColor: colors.slice(0, labels.length),
+        borderRadius: 8,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8a9fc4' }, grid: { color: 'rgba(61,248,255,0.1)' } },
+        y: { ticks: { color: '#8a9fc4' }, grid: { color: 'rgba(61,248,255,0.1)' }, beginAtZero: true }
+      }
     }
+  });
 
-    const entry = { id: newId, city: newCity || '', company: newCompany || '', timestamp: Date.now() };
+  await new Promise(r => setTimeout(r, 300));
 
-    try {
-      await fetch('/api/save-entry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-      });
-    } catch (err) {
-      console.error('Error guardando entrada:', err);
+  const chartImg = chartCanvas.toDataURL('image/png');
+  tempChart.destroy();
+  document.body.removeChild(chartCanvas);
+
+  const chartH = 70;
+  const chartW = W - 28;
+  doc.setFillColor(10, 20, 45);
+  doc.roundedRect(14, finalY + 3, chartW, chartH, 3, 3, 'F');
+  doc.addImage(chartImg, 'PNG', 14, finalY + 3, chartW, chartH);
+
+  // ── Footer
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(80, 100, 140);
+    doc.text(`IIWSS Dashboard — Página ${i} de ${pages}`, W/2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
+  }
+
+  doc.save(`IIWSS_reporte_${fecha}.pdf`);
+  showToast('📄 PDF descargado');
+}
+
+// ══════════════════════════════════════════════════════════
+// AUTH GUARD — la sesión la maneja el servidor con cookie
+// ══════════════════════════════════════════════════════════
+const _rawUser = sessionStorage.getItem('iot_user');
+if (!_rawUser) { window.location.href = '/login.html'; }
+
+const currentUser = JSON.parse(_rawUser || '{}');
+document.getElementById('userName').textContent   = currentUser.name  || 'Usuario';
+document.getElementById('userRole').textContent   = currentUser.role  || '';
+document.getElementById('userAvatar').textContent = (currentUser.name || 'U')[0].toUpperCase();
+
+function logout() {
+  fetch('/api/logout', { method: 'POST' }).finally(() => {
+    sessionStorage.clear();
+    window.location.href = '/login.html';
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let devices      = [];
+let statusCache  = {};
+let shadowCache  = {};
+let editingId    = null;
+let autoInterval = null;
+let autoSecs     = 30;
+
+let chartStatus  = null;
+let chartWashes  = null;
+let chartHistory = null;
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelector(`.nav-link[onclick*="${page}"]`).classList.add('active');
+
+  if (page === 'devices') renderDevicesTable();
+}
+
+// ══════════════════════════════════════════════════════════
+// API HELPERS
+// ══════════════════════════════════════════════════════════
+const post = (url, body) =>
+  fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+    .then(r => r.json());
+
+async function fetchDevices() {
+  const data = await fetch('/api/devices').then(r => r.json());
+  devices = data;
+  return data;
+}
+
+async function fetchStatus(deviceId) {
+  try {
+    const data = await post('/api/status', { deviceId });
+    statusCache[deviceId] = data;
+    return data;
+  } catch { return { DeviceId: deviceId, IsConnected: false }; }
+}
+
+async function fetchShadow(deviceId) {
+  try {
+    const data = await post('/api/shadow', { deviceId });
+    shadowCache[deviceId] = data;
+    return data;
+  } catch { return { dailyCount: 0 }; }
+}
+
+// ══════════════════════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════════════════════
+const chartDefaults = {
+  color: '#8a9fc4',
+  plugins: { legend: { labels: { color: '#8a9fc4', font: { family: 'DM Sans' } } } }
+};
+
+function initCharts() {
+  const gridColor = 'rgba(61,248,255,0.07)';
+  const tickColor = '#8a9fc4';
+
+  // Doughnut: connection status
+  chartStatus = new Chart(document.getElementById('chartStatus'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Conectados', 'Desconectados'],
+      datasets: [{ data: [0, 0], backgroundColor: ['#4cffbe', '#ff5d9f'], borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      cutout: '70%',
+      plugins: { legend: { position: 'bottom', labels: { color: tickColor, font: { family:'DM Sans' }, padding: 16 } } }
     }
+  });
 
-    devices.push({ id: newId, city: newCity, company: newCompany });
-    await updateTable();
-    document.getElementById('newDeviceId').value = '';
-    document.getElementById('newCity').value = '';
-    document.getElementById('newCompany').value = '';
-  };
+  // Bar: washes per device
+  chartWashes = new Chart(document.getElementById('chartWashes'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'Lavadas', data: [], backgroundColor: 'rgba(255,205,61,0.7)', borderColor: '#ffcd3d', borderWidth: 1, borderRadius: 8 }] },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
 
-  updateTable();
-  setInterval(updateTable, 30000);
+  // Line: history
+  chartHistory = new Chart(document.getElementById('chartHistory'), {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      plugins: { legend: { labels: { color: tickColor, font: { family:'DM Sans' } } } },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+      },
+      elements: { line: { tension: 0.4 }, point: { radius: 3 } }
+    }
+  });
+}
+
+function updateCharts() {
+  const connected    = devices.filter(d => statusCache[d.id]?.IsConnected).length;
+  const disconnected = devices.length - connected;
+
+  chartStatus.data.datasets[0].data = [connected, disconnected];
+  chartStatus.update();
+
+  chartWashes.data.labels   = devices.map(d => d.id.slice(-6));
+  chartWashes.data.datasets[0].data = devices.map(d => shadowCache[d.id]?.dailyCount || 0);
+  chartWashes.update();
+
+  // History: last 7 days from /api/history
+  fetch('/api/history').then(r => r.json()).then(hist => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+    const colors = ['#3df8ff','#ff4fd8','#65ff9b','#ffcd3d','#a78bfa','#fb923c','#34d399'];
+    const datasets = devices.map((dev, idx) => ({
+      label: dev.id.slice(-6),
+      data: days.map(day => {
+        const entries = hist.filter(h => h.deviceId === dev.id && h.date === day);
+        return entries.reduce((s, h) => s + (h.count || 0), 0);
+      }),
+      borderColor: colors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length] + '22',
+      fill: true
+    }));
+    chartHistory.data.labels   = days.map(d => d.slice(5)); // MM-DD
+    chartHistory.data.datasets = datasets;
+    chartHistory.update();
+  }).catch(() => {});
+}
+
+// ══════════════════════════════════════════════════════════
+// DEVICE CARDS (dashboard)
+// ══════════════════════════════════════════════════════════
+function renderDeviceCards() {
+  const container = document.getElementById('deviceCards');
+  container.innerHTML = '';
+
+  let connectedCount = 0;
+  let totalWashes    = 0;
+
+  devices.forEach((dev, i) => {
+    const status  = statusCache[dev.id] || {};
+    const shadow  = shadowCache[dev.id] || {};
+    const isConn  = !!status.IsConnected;
+    const washes  = shadow.dailyCount || 0;
+    if (isConn) connectedCount++;
+    totalWashes += washes;
+
+    const col = document.createElement('div');
+    col.className = 'col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3';
+    col.style.animationDelay = `${i * 80}ms`;
+
+    let ts = '';
+    try { ts = shadow.time || (status.Timestamp ? new Date(Number(status.Timestamp)).toLocaleString() : ''); } catch {}
+
+    col.innerHTML = `
+      <div class="device-card">
+        <div class="device-id">${dev.id}</div>
+        <div class="device-meta">📍 ${dev.city || '—'} &nbsp;•&nbsp; 🏢 ${dev.company || '—'}</div>
+        <div style="margin-bottom:0.75rem">
+          <span class="status-pill ${isConn ? 'connected' : 'disconnected'}">
+            ${isConn ? '✅ Conectado' : '❌ Desconectado'}
+          </span>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:0.5rem;margin-bottom:0.5rem">
+          <div>
+            <div class="wash-label">Lavadas hoy</div>
+            <div class="wash-count">${washes}</div>
+          </div>
+          ${shadow.command !== undefined ? `<div style="margin-left:auto;text-align:right">
+            <div class="wash-label">Comando</div>
+            <div style="font-family:'Orbitron',monospace;font-size:1.1rem;color:var(--neon-magenta)">${shadow.command}</div>
+          </div>` : ''}
+        </div>
+        ${ts ? `<div style="font-size:0.72rem;color:var(--text-secondary)">🕐 ${ts}</div>` : ''}
+      </div>
+    `;
+    container.appendChild(col);
+  });
+
+  // KPIs
+  document.getElementById('kpiTotal').textContent     = devices.length;
+  document.getElementById('kpiConnected').textContent = connectedCount;
+  document.getElementById('kpiDisc').textContent      = devices.length - connectedCount;
+  document.getElementById('kpiWashes').textContent    = totalWashes;
+}
+
+// ══════════════════════════════════════════════════════════
+// DEVICES TABLE (CRUD page)
+// ══════════════════════════════════════════════════════════
+async function renderDevicesTable() {
+  const tbody = document.getElementById('devicesBody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-secondary)"><span class="loader"></span> Cargando...</td></tr>';
+
+  await fetchDevices();
+  await Promise.all(devices.map(d => Promise.all([fetchStatus(d.id), fetchShadow(d.id)])));
+
+  tbody.innerHTML = '';
+  devices.forEach(dev => {
+    const status = statusCache[dev.id] || {};
+    const shadow = shadowCache[dev.id] || {};
+    const isConn = !!status.IsConnected;
+    const washes = shadow.dailyCount || 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family:'Orbitron',monospace;font-size:0.8rem;color:var(--neon-cyan)">${dev.id}</td>
+      <td>${dev.city || '—'}</td>
+      <td>${dev.company || '—'}</td>
+      <td style="font-family:'Orbitron',monospace;color:var(--neon-amber)">${washes}</td>
+      <td><span class="status-pill ${isConn ? 'connected' : 'disconnected'}" style="font-size:0.72rem">${isConn ? '✅ Online' : '❌ Offline'}</span></td>
+      <td style="display:flex;gap:0.5rem;flex-wrap:wrap">
+        <button class="neon-btn" style="font-size:0.75rem;padding:0.3rem 0.65rem" onclick="openModal('edit','${dev.id}')">✏️ Editar</button>
+        <button class="btn-danger-sm" onclick="deleteDevice('${dev.id}')">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// CRUD MODAL
+// ══════════════════════════════════════════════════════════
+function openModal(mode, deviceId) {
+  editingId = mode === 'edit' ? deviceId : null;
+  document.getElementById('modalTitle').textContent = mode === 'edit' ? 'Editar Dispositivo' : 'Nuevo Dispositivo';
+  document.getElementById('mDeviceId').disabled     = mode === 'edit';
+
+  if (mode === 'edit') {
+    const dev = devices.find(d => d.id === deviceId);
+    document.getElementById('mDeviceId').value  = dev?.id      || '';
+    document.getElementById('mCity').value      = dev?.city    || '';
+    document.getElementById('mCompany').value   = dev?.company || '';
+  } else {
+    document.getElementById('mDeviceId').value  = '';
+    document.getElementById('mCity').value      = '';
+    document.getElementById('mCompany').value   = '';
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+function closeModalIfOutside(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+async function submitModal() {
+  const id      = document.getElementById('mDeviceId').value.trim();
+  const city    = document.getElementById('mCity').value.trim();
+  const company = document.getElementById('mCompany').value.trim();
+
+  if (!id) { showToast('❌ ID requerido'); return; }
+
+  if (editingId) {
+    await fetch(`/api/devices/${editingId}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ city, company })
+    });
+    showToast('✅ Dispositivo actualizado');
+  } else {
+    const res = await fetch('/api/devices', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id, city, company })
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast('❌ ' + (data.error || 'Error')); return; }
+    showToast('✅ Dispositivo agregado');
+  }
+  closeModal();
+  renderDevicesTable();
+  refreshAll();
+}
+
+async function deleteDevice(deviceId) {
+  if (!confirm(`¿Eliminar dispositivo ${deviceId}?`)) return;
+  await fetch(`/api/devices/${deviceId}`, { method:'DELETE' });
+  showToast('🗑️ Dispositivo eliminado');
+  renderDevicesTable();
+  refreshAll();
+}
+
+// ══════════════════════════════════════════════════════════
+// REFRESH ALL
+// ══════════════════════════════════════════════════════════
+async function refreshAll() {
+  document.getElementById('loader-dash').style.display = 'inline';
+  await fetchDevices();
+  await Promise.all(devices.flatMap(d => [fetchStatus(d.id), fetchShadow(d.id)]));
+  renderDeviceCards();
+  updateCharts();
+
+  // Save daily wash history snapshot
+  const today = new Date().toISOString().split('T')[0];
+  devices.forEach(dev => {
+    const washes = shadowCache[dev.id]?.dailyCount || 0;
+    if (washes > 0) {
+      post('/api/history', { deviceId: dev.id, count: washes, date: today }).catch(() => {});
+    }
+  });
+
+  document.getElementById('loader-dash').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════
+function saveConfig() {
+  autoSecs = parseInt(document.getElementById('cfgInterval').value) || 30;
+  startAutoRefresh();
+  showToast(`⚙️ Intervalo ajustado a ${autoSecs}s`);
+}
+
+function startAutoRefresh() {
+  if (autoInterval) clearInterval(autoInterval);
+  autoInterval = setInterval(refreshAll, autoSecs * 1000);
+}
+
+// ══════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+initCharts();
+refreshAll();
+startAutoRefresh();
+
+// Notification permission
+if ('Notification' in window && Notification.permission !== 'granted') {
+  Notification.requestPermission();
+}
 </script>
 </body>
 </html>
